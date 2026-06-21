@@ -71,6 +71,32 @@ POIP operates as a sequential analytics pipeline. High-volume, raw logs are proc
 
 ---
 
+## 🕸️ Network Intelligence Layer (Pseudo-GNN)
+
+The **Network Intelligence** module models the city's hotspot ecosystem as a similarity-weighted undirected graph containing 300 key nodes (representing the top spatial cells/hotspots). It employs a **pseudo-GNN (Graph Neural Network) neighborhood aggregation pattern** to represent and target systemic congestion.
+
+### How it works:
+1. **Node Definition**: Each node represents a distinct H3 spatial cell hotspot (e.g., Rajajinagar entrance, Anand Rao junction).
+2. **Edge Construction (7D Feature Similarity)**: Edges are not drawn purely by geographical adjacency, but by behavioral similarity in a 7-dimensional feature space:
+   $$X = \{\mu_{\text{POI}}, \text{CIS}, \text{Propagation Score}, \text{EFI}, \text{Heavy Vehicle Ratio}, \text{Junction Ratio}, \text{Violation Volume}\}$$
+   Edges connect cells that are mutually within each other's 5 nearest neighbors in this feature space, with edge weights defined as $W_{ij} = 1 - d_{\text{cosine}}$ (cosine similarity).
+3. **Pseudo-GNN Message Passing**:
+   - The graph performs **spatial propagation aggregation**: each node's local congestion impact is updated by aggregating severity messages from its topological and geographical neighbors (using the inverse-distance weighted nearest-neighbor spillover).
+   - This mimics the message passing layers of a Graph Neural Network (GNN), where a node's final state combines its own features with aggregated neighbor features.
+4. **Structural Analysis**:
+   - **PageRank Centrality**: Identifies "hub" hotspots that are connected to other highly severe, similar zones. Targeting these hubs yields cascading compliance benefits.
+   - **Betweenness Centrality**: Flags "gateway" hotspots that bridge different behavioral clusters. Enforcing these nodes fragments the city's congestion graph.
+   - **Community Detection**: Partitions the graph into behavioral communities (e.g., residential overflow clusters vs. industrial corridors) using the Clauset-Newman-Moore modularity maximization algorithm.
+
+### Example Scenario:
+Consider **BTP023 - Mahalaxmi Layout Entrance** (Node A) and **BTP083 - AS Char Street** (Node B). 
+- Both nodes are highly active junctions showing severe loading behaviors.
+- The system draws an edge between Node A and Node B because they share high similarity in their junction ratio, mean POI, and EFI (Enforcement Failure Index).
+- Through the **pseudo-GNN neighborhood aggregation**, the propagation score of Node A is updated by receiving neighbor congestion metrics from Node B.
+- When an enforcement officer targets Node A (Mahalaxmi Layout), the compliance behavior propagates to Node B, allowing smart-city teams to dispatch resources to structural "hubs" rather than chasing isolated incidents.
+
+---
+
 ## 📂 Directory Structure
 
 ```
