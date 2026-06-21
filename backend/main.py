@@ -33,3 +33,9 @@ app.include_router(endpoints.router, prefix="/api")
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Parking Operational Intelligence Platform API"}
+
+@app.get("/health")
+@app.head("/health")
+def health_check():
+    return {"status": "ok"}
+
