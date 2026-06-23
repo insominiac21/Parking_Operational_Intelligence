@@ -15,11 +15,11 @@ To prevent RAM out-of-memory (OOM) errors and optimize hosting costs on free-tie
    - Run via `requirements.txt` (extremely lightweight, loads in seconds, uses under 100MB of RAM).
 2. **Semantic Search Backend**:
    - Handles natural-language queries by searching the vector index database.
-   - Run via `requirements-semantic.txt` (includes the FAISS index database).
-3. **Hugging Face API Embedding Offloading**:
-   - Instead of loading the heavy `sentence-transformers` model locally (which uses ~1.2GB–1.5GB RAM and causes OOM crashes on free hosting), the backend makes an external API call to the **Hugging Face Inference API** using a secure `HF_TOKEN` to extract the 384-dimensional vector for `sentence-transformers/all-MiniLM-L6-v2`.
-   - The backend then matches the vector against the local lightweight `faiss` index in milliseconds, keeping the entire pipeline vector-based, fast, and OOM-proof!
-   - If the API is offline or the token is missing, the service automatically falls back to local models or a fast keyword-based text matcher.
+   - Run via `requirements-semantic.txt` (includes FAISS index only — no `sentence-transformers` needed).
+3. **Hugging Face Inference API Embedding Offloading**:
+   - Instead of loading the heavy `sentence-transformers` model locally (~1.2–1.5 GB RAM, causes OOM on free tier), the semantic backend makes a lightweight HTTP POST to the **Hugging Face Inference API** (`sentence-transformers/all-MiniLM-L6-v2`) using a `HF_TOKEN` environment variable.
+   - The returned 384-dim vector is matched against the local FAISS index in milliseconds — keeping the pipeline fully vector-based while using **< 150 MB RAM**.
+   - If the HF API is unavailable or the token is missing, the service automatically falls back to fast **keyword-based text matching** on the same index, so search always returns results.
 4. **Vercel Reverse Proxy Routing**:
    - Vercel routes `/api/search` queries to the **Semantic Search Backend**, `/api/*` to the **Primary Backend**, and `/health/*` paths for centralized UptimeRobot monitoring.
 
@@ -129,7 +129,8 @@ Parking_Operational_Intelligence/
 │   │   └── data_service.py               # Aggregates datasets, models propagation, handles logic
 │   ├── Artifacts/                        # Precomputed data exports (CSVs, GeoJSON, HTML)
 │   ├── main.py                           # App entry point with CORS & router attachment
-│   └── requirements.txt                  # Python dependencies
+│   ├── requirements.txt                  # Primary backend deps (no ML libs, ultra-lightweight)
+│   └── requirements-semantic.txt         # Semantic backend deps (faiss-cpu + requests for HF API)
 │
 ├── frontend/                             # React + TS + Vite + Tailwind Frontend
 │   ├── public/                           # Static assets
@@ -137,13 +138,14 @@ Parking_Operational_Intelligence/
 │   │   ├── assets/
 │   │   ├── components/                   # Shared UI components (e.g., ClusteredLayer map helper)
 │   │   ├── pages/                        # Individual dashboard modules:
-│   │   │   ├── ExecutiveCommandCenter.tsx # Main high-level metrics, charts, & priority queue
+│   │   │   │   ├── ExecutiveCommandCenter.tsx # Main high-level metrics, charts, & priority queue
 │   │   │   ├── GISOperationsMap.tsx      # Map interface with cluster visualization
 │   │   │   ├── HotspotExplorer.tsx       # Tabular data grid with filters
 │   │   │   ├── ForecastCenter.tsx        # CatBoost predictions vs. actual hourly trends
 │   │   │   ├── ArchetypeIntelligence.tsx # KMeans cluster profiles and custom interventions
 │   │   │   ├── NetworkIntelligence.tsx   # PageRank centralities & community network graph
-│   │   │   └── DynamicPolicyEngine.tsx   # Policy simulation dashboard
+│   │   │   ├── DynamicPolicyEngine.tsx   # Policy simulation & zone governance dashboard
+│   │   │   └── SemanticSearch.tsx        # AI-powered natural language hotspot search (semantic backend)
 │   │   ├── App.tsx                       # React routing structure
 │   │   ├── Layout.tsx                    # Sidebar layout & navigation
 │   │   └── index.css                     # Global styles
@@ -218,15 +220,23 @@ This backend runs the core dashboard APIs:
 ---
 
 ### Step 2: Deploy the Semantic Search Backend (FastAPI) to Render
-This backend runs the AI embeddings query service:
+This backend handles AI-powered natural-language hotspot queries — it is designed to be **lean by design**:
+- Uses **FAISS** for vector similarity search on precomputed embeddings (loaded from `hotspot_embeddings.npy`).
+- Does **not** load `sentence-transformers` locally — embedding extraction is offloaded to the **Hugging Face Inference API** via `requests`, keeping RAM under 150 MB.
+- Falls back to fast keyword matching if the HF API is unavailable.
+
 1. Log in to [render.com](https://render.com/) and create a *second* **Web Service**. Connect this repository.
 2. Configure settings:
    - **Name**: e.g., `parking-semantic-backend`
    - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements-semantic.txt` (Installs FAISS and Sentence-Transformers)
+   - **Build Command**: `pip install -r requirements-semantic.txt`
    - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-   - **Instance Type**: Select an instance with sufficient memory (at least 2GB of RAM is recommended to load the FAISS vectors and MiniLM transformer).
-3. Deploy the service and **copy the live URL** (e.g., `https://parking-semantic-backend.onrender.com`).
+   - **Instance Type**: Free tier (512 MB RAM) is sufficient — no transformer model loaded locally.
+3. Add the following **Environment Variable** in the Render dashboard:
+   | Key | Value |
+   |-----|-------|
+   | `HF_TOKEN` | Your Hugging Face API token (get one free at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)) |
+4. Deploy the service and **copy the live URL** (e.g., `https://parking-semantic-backend.onrender.com`).
 
 ---
 

@@ -6,9 +6,9 @@ import GISOperationsMap from './pages/GISOperationsMap';
 import HotspotExplorer from './pages/HotspotExplorer';
 import ForecastCenter from './pages/ForecastCenter';
 import ArchetypeIntelligence from './pages/ArchetypeIntelligence';
-import SemanticSearch from './pages/SemanticSearch';
 import NetworkIntelligence from './pages/NetworkIntelligence';
 import DynamicPolicyEngine from './pages/DynamicPolicyEngine';
+import SemanticSearch from './pages/SemanticSearch';
 
 function App() {
   return (
@@ -20,9 +20,9 @@ function App() {
           <Route path="explorer" element={<HotspotExplorer />} />
           <Route path="forecast" element={<ForecastCenter />} />
           <Route path="archetypes" element={<ArchetypeIntelligence />} />
-          <Route path="search" element={<SemanticSearch />} />
           <Route path="network" element={<NetworkIntelligence />} />
           <Route path="policy" element={<DynamicPolicyEngine />} />
+          <Route path="search" element={<SemanticSearch />} />
         </Route>
       </Routes>
     </BrowserRouter>
