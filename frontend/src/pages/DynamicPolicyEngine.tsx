@@ -105,7 +105,7 @@ export default function DynamicPolicyEngine() {
 
   const dismissToast = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  const handleEditPolicy = (zone: string, msg: string) => {
+  const handleEditPolicy = (msg: string) => {
     addToast(`✅ ${msg}`, 'success');
   };
 
@@ -310,7 +310,7 @@ export default function DynamicPolicyEngine() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleEditPolicy(p.zone, p.editMsg)}
+                    onClick={() => handleEditPolicy(p.editMsg)}
                     className="w-full py-2 rounded-lg font-medium transition-all bg-white hover:bg-indigo-50 active:scale-95 text-slate-700 hover:text-indigo-700 border border-slate-300 hover:border-indigo-300 flex items-center justify-center gap-2"
                   >
                     <CheckCircle className="w-4 h-4" />
