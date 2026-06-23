@@ -1,12 +1,20 @@
 {
   "rewrites": [
     {
+      "source": "/health/semantic",
+      "destination": "https://parking-operational-intelligence-backend.onrender.com/health"
+    },
+    {
+      "source": "/health/primary",
+      "destination": "https://parking-operational-intelligence.onrender.com/health"
+    },
+    {
       "source": "/api/search",
-      "destination": "https://your-semantic-backend.onrender.com/api/search"
+      "destination": "https://parking-operational-intelligence-backend.onrender.com/api/search"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://your-primary-backend.onrender.com/api/:path*"
+      "destination": "https://parking-operational-intelligence.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
