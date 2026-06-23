@@ -6,3 +6,4 @@ faiss-cpu
 geopandas
 sentence-transformers
 pydantic
+python-dotenv

@@ -6,6 +6,25 @@ Designed for traffic police departments, smart-city planners, and GIS operators,
 
 ---
 
+## ⚡ Production-Grade Microservice Architecture (Dual-Backend)
+
+To prevent RAM out-of-memory (OOM) errors and optimize hosting costs on free-tier services (which limit RAM to 512MB), POIP splits the backend load into two parallel web services managed by a single frontend:
+
+1. **Primary Dashboard Backend**:
+   - Handles KPIs, maps, forecast data, and network intelligence metrics.
+   - Run via `requirements.txt` (extremely lightweight, loads in seconds, uses under 100MB of RAM).
+2. **Semantic Search Backend**:
+   - Handles natural-language queries by searching the vector index database.
+   - Run via `requirements-semantic.txt` (includes the FAISS index database).
+3. **Hugging Face API Embedding Offloading**:
+   - Instead of loading the heavy `sentence-transformers` model locally (which uses ~1.2GB–1.5GB RAM and causes OOM crashes on free hosting), the backend makes an external API call to the **Hugging Face Inference API** using a secure `HF_TOKEN` to extract the 384-dimensional vector for `sentence-transformers/all-MiniLM-L6-v2`.
+   - The backend then matches the vector against the local lightweight `faiss` index in milliseconds, keeping the entire pipeline vector-based, fast, and OOM-proof!
+   - If the API is offline or the token is missing, the service automatically falls back to local models or a fast keyword-based text matcher.
+4. **Vercel Reverse Proxy Routing**:
+   - Vercel routes `/api/search` queries to the **Semantic Search Backend**, `/api/*` to the **Primary Backend**, and `/health/*` paths for centralized UptimeRobot monitoring.
+
+---
+
 ## 🏗️ Workflow Architecture
 
 POIP operates as a sequential analytics pipeline. High-volume, raw logs are processed through spatial, statistical, machine learning, and network layers, producing lightweight data artifacts that power a real-time interactive dashboard.

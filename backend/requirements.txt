@@ -4,3 +4,4 @@ pandas
 numpy
 geopandas
 pydantic
+python-dotenv
