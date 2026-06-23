@@ -54,9 +54,9 @@ export default function NetworkIntelligence() {
     'Junction Choke Points': '#f97316',
     'Commercial Arteries': '#3b82f6',
     'Night Spillovers': '#8b5cf6',
-    'Transit Hubs': '#14b8a6',
-    'Residential Spillovers': '#ec4899',
-    'Event Venues': '#eab308'
+    'Freight Obstruction Corridors': '#10b981',
+    'Weekend Event Zones': '#f59e0b',
+    'Mixed Risk Zone': '#6b7280'
   };
 
   const categories = Object.keys(archetypeColors).map(name => ({ name }));

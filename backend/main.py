@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from dotenv import load_dotenv
+
+# Load local environment variables from .env file
+load_dotenv()
+
 
 try:
     from backend.services.data_service import DataService

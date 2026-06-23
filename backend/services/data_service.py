@@ -141,39 +141,100 @@ class DataService:
         return f'{{"nodes": {nodes_json}, "edges": {edges}}}'
 
     def semantic_search(self, query: str, top_k: int = 10):
-        if not HAS_FAISS:
-            print("Semantic search requested but 'faiss' is not installed.")
-            return []
-        if not self.faiss_index or self.semantic_index_data is None:
-            return []
-            
-        try:
-            if self.model is None:
-                print("Lazy loading SentenceTransformer model to save memory...")
-                from sentence_transformers import SentenceTransformer
-                self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        use_fallback = False
+        hf_token = os.environ.get("HF_TOKEN")
+        
+        # 1. Primary Path: Hugging Face Inference API (Zero-memory footprint for embedding extraction)
+        if hf_token and HAS_FAISS and self.faiss_index and self.semantic_index_data is not None:
+            try:
+                import requests
+                print("Querying Hugging Face Inference API for semantic embedding...")
+                api_url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
+                headers = {"Authorization": f"Bearer {hf_token}"}
+                response = requests.post(api_url, headers=headers, json={"inputs": query}, timeout=10)
                 
-            query_emb = self.model.encode([query])
-            faiss.normalize_L2(query_emb)
+                if response.status_code == 200:
+                    query_emb = response.json()
+                    # Standardize shape (HF returns a nested list or flat list depending on task type)
+                    if isinstance(query_emb, list) and len(query_emb) > 0:
+                        if isinstance(query_emb[0], list):
+                            query_emb = query_emb[0]
+                        
+                        query_emb_np = np.array([query_emb], dtype=np.float32)
+                        faiss.normalize_L2(query_emb_np)
+                        
+                        distances, indices = self.faiss_index.search(query_emb_np, k=top_k)
+                        
+                        mapping = self._get_label_mapping()
+                        results = []
+                        for i, idx in enumerate(indices[0]):
+                            if idx != -1 and idx < len(self.semantic_index_data):
+                                row = self.semantic_index_data[idx].copy()
+                                row["similarity_score"] = float(distances[0][i])
+                                row["display_label"] = mapping.get(row.get("spatial_cell"), row.get("spatial_cell"))
+                                results.append(row)
+                                
+                        return results
+                else:
+                    print(f"Hugging Face API returned status {response.status_code}. Falling back.")
+                    use_fallback = True
+            except Exception as e:
+                print(f"Hugging Face Inference API failed: {e}. Falling back.")
+                use_fallback = True
+        else:
+            use_fallback = True
             
-            distances, indices = self.faiss_index.search(query_emb, k=top_k)
-            
-            mapping = self._get_label_mapping()
-            results = []
-            for i, idx in enumerate(indices[0]):
-                if idx != -1 and idx < len(self.semantic_index_data):
-                    row = self.semantic_index_data[idx].copy()
-                    row["similarity_score"] = float(distances[0][i])
-                    row["display_label"] = mapping.get(row.get("spatial_cell"), row.get("spatial_cell"))
-                    results.append(row)
+        # 2. Secondary Path: Local SentenceTransformer model (Only if faiss is installed and HF is unavailable)
+        if use_fallback and HAS_FAISS and self.faiss_index and self.semantic_index_data is not None:
+            try:
+                if self.model is None:
+                    print("Lazy loading SentenceTransformer model to save memory...")
+                    from sentence_transformers import SentenceTransformer
+                    self.model = SentenceTransformer('all-MiniLM-L6-v2')
                     
+                query_emb = self.model.encode([query])
+                faiss.normalize_L2(query_emb)
+                
+                distances, indices = self.faiss_index.search(query_emb, k=top_k)
+                
+                mapping = self._get_label_mapping()
+                results = []
+                for i, idx in enumerate(indices[0]):
+                    if idx != -1 and idx < len(self.semantic_index_data):
+                        row = self.semantic_index_data[idx].copy()
+                        row["similarity_score"] = float(distances[0][i])
+                        row["display_label"] = mapping.get(row.get("spatial_cell"), row.get("spatial_cell"))
+                        results.append(row)
+                        
+                return results
+            except Exception as e:
+                print(f"Local SentenceTransformer loading failed: {e}. Falling back to keyword matching.")
+                use_fallback = True
+                
+        # 3. Tertiary Path: Keyword-based text matching (Ultimate zero-dependency fallback)
+        if use_fallback and self.semantic_index_data is not None:
+            query_words = query.lower().split()
+            results = []
+            mapping = self._get_label_mapping()
+            for row in self.semantic_index_data:
+                text = str(row.get("hotspot_text", "")).lower()
+                archetype = str(row.get("archetype_name", "")).lower()
+                
+                matches = sum(1 for word in query_words if word in text or word in archetype)
+                if matches > 0:
+                    row_copy = row.copy()
+                    row_copy["similarity_score"] = min(0.95, 0.4 + (matches / len(query_words)) * 0.5)
+                    row_copy["display_label"] = mapping.get(row_copy.get("spatial_cell"), row_copy.get("spatial_cell"))
+                    results.append(row_copy)
+            
+            results = sorted(results, key=lambda x: x["similarity_score"], reverse=True)[:top_k]
             return results
-        except Exception as e:
-            print(f"Error during semantic search execution: {e}")
-            return []
+            
+        return []
 
 # A global instance to be initialized in main.py
 data_service = None
 
 def get_data_service():
     return data_service
+
