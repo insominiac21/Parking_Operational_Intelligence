@@ -1,10 +1,11 @@
 
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Map, FileSearch, LineChart, Cpu, Network, Shield } from 'lucide-react';
+import { Home, Map, FileSearch, LineChart, Cpu, Search, Network, Shield } from 'lucide-react';
 import clsx from 'clsx';
 
 const navItems = [
   { path: '/', label: 'Executive Command Center', icon: Home },
+  { path: '/search', label: 'Semantic Search', icon: Search },
   { path: '/map', label: 'GIS Operations Map', icon: Map },
   { path: '/explorer', label: 'Hotspot Explorer', icon: FileSearch },
   { path: '/forecast', label: 'Forecast Center', icon: LineChart },

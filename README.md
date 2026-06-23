@@ -178,38 +178,67 @@ Parking_Operational_Intelligence/
 
 ---
 
-## 🌐 Deployment Instructions
+## 🌐 Deployment Instructions (Dual-Backend Microservice Architecture)
 
-### Deploying Backend (FastAPI) to Render
+To optimize hosting cost and prevent RAM out-of-memory (OOM) errors, this platform is designed as a **split-microservices backend** targeting a single unified React frontend:
+1. **Primary Backend**: A lightweight FastAPI instance that serves the KPIs, maps, and forecasts (running `requirements.txt` with NO `faiss` or `sentence-transformers`).
+2. **Semantic Search Backend**: A dedicated heavy FastAPI instance running only the vector search capabilities (running `requirements-semantic.txt` which loads `faiss` and the sentence transformer embeddings).
 
-Render is an excellent platform for deploying the FastAPI backend:
+---
 
-1. **Create a Render Account**: Sign up at [render.com](https://render.com/).
-2. **New Web Service**: Click **New +** and select **Web Service**.
-3. **Connect Repository**: Connect your GitHub repository containing this project.
-4. **Configure Settings**:
-   - **Name**: Choose a name (e.g., `parking-operational-intelligence-backend`).
-   - **Environment**: Select `Python` (or `Docker` if you package it, but Python is standard).
-   - **Root Directory**: Set this to `backend`. This ensures Render runs inside the `backend` folder where `requirements.txt` and `main.py` live.
-   - **Build Command**: `pip install -r requirements.txt`
+### Step 1: Deploy the Primary Backend (FastAPI) to Render
+This backend runs the core dashboard APIs:
+1. Log in to [render.com](https://render.com/) and create a new **Web Service**. Connect this repository.
+2. Configure settings:
+   - **Name**: e.g., `parking-primary-backend`
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt` (Installs lightweight packages only)
    - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-5. **Deploy**: Click **Create Web Service**. Render will build the environment and host your FastAPI API.
-   *Copy your live backend URL (e.g., `https://parking-operational-intelligence-backend.onrender.com`).*
+3. Deploy the service and **copy the live URL** (e.g., `https://parking-primary-backend.onrender.com`).
 
-### Deploying Frontend (React/Vite) to Vercel
+---
 
-Vercel is the recommended platform for hosting the React frontend:
+### Step 2: Deploy the Semantic Search Backend (FastAPI) to Render
+This backend runs the AI embeddings query service:
+1. Log in to [render.com](https://render.com/) and create a *second* **Web Service**. Connect this repository.
+2. Configure settings:
+   - **Name**: e.g., `parking-semantic-backend`
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements-semantic.txt` (Installs FAISS and Sentence-Transformers)
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Instance Type**: Select an instance with sufficient memory (at least 2GB of RAM is recommended to load the FAISS vectors and MiniLM transformer).
+3. Deploy the service and **copy the live URL** (e.g., `https://parking-semantic-backend.onrender.com`).
 
-1. **Create a Vercel Account**: Sign up at [vercel.com](https://vercel.com/).
-2. **Import Project**: Select **Add New...** -> **Project** and import your GitHub repository.
-3. **Configure Settings**:
-   - **Framework Preset**: Select `Vite`.
-   - **Root Directory**: Click Edit next to Root Directory, select the `frontend` folder, and click **Continue**.
-   - **Build and Development Settings**: Default settings (`npm run build`, `dist`, `npm install`) are correct.
-4. **Environment Variables**:
-   - Expand the **Environment Variables** section.
-   - Add a new variable:
-     - **Key**: `VITE_API_BASE_URL`
-     - **Value**: The live backend URL you copied from Render (e.g., `https://parking-operational-intelligence-backend.onrender.com`).
-5. **Deploy**: Click **Deploy**. Vercel will build the frontend and provide a public deployment URL.
+---
+
+### Step 3: Deploy the Frontend (Vite/React) to Vercel
+Vercel will act as a reverse proxy, dynamically routing relative frontend paths to the correct backend microservice:
+1. Log in to [vercel.com](https://vercel.com/) and import your repository.
+2. Configure settings:
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `frontend`
+3. Edit [frontend/vercel.json](file:///a:/hackathon/gridloack%20r2/repo/Parking_Operational_Intelligence/frontend/vercel.json) in your repository and set the `destination` URLs to match your deployed services:
+   ```json
+   {
+     "rewrites": [
+       {
+         "source": "/api/search",
+         "destination": "https://parking-semantic-backend.onrender.com/api/search"
+       },
+       {
+         "source": "/api/:path*",
+         "destination": "https://parking-primary-backend.onrender.com/api/:path*"
+       },
+       {
+         "source": "/(.*)",
+         "destination": "/index.html"
+       }
+     ]
+   }
+   ```
+4. Deploy the project on Vercel. Now, when the browser makes API requests:
+   - Queries to `/api/search` are routed to the **Semantic Search Backend**.
+   - All other API queries are routed to the **Primary Backend**.
+   - No CORS errors occur, and no frontend environment variables are required!
+
 

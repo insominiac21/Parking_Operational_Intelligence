@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/search",
+      "destination": "https://your-semantic-backend.onrender.com/api/search"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://your-primary-backend.onrender.com/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
