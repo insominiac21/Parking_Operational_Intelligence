@@ -143,7 +143,6 @@ export default function DynamicPolicyEngine() {
   );
 
   const totalCells = hotspots.length;
-  const zoneDCount = getZoneCount(dispatchThreshold, 999);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10 max-w-6xl mx-auto relative">
